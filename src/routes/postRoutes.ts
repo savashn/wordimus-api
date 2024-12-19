@@ -175,9 +175,8 @@ router.post('/signup', async (req: Request, res: Response) => {
     };
 
     await db.insert(usersTable).values(user);
-    console.log('New user created!')
 
-    res.send(user);
+    res.send('Success!');
 });
 
 export default router;
