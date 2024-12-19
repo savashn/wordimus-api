@@ -80,6 +80,7 @@ router.get('/:user/posts/:post', async (req: Request, res: Response) => {
         updatedAt: postsTable.updatedAt,
         isHidden: postsTable.isHidden,
         author: usersTable.name,
+        authorImg: usersTable.image
     })
         .from(postsTable)
         .innerJoin(usersTable, eq(postsTable.authorId, usersTable.id))
@@ -275,6 +276,7 @@ router.get('/', async (req: Request, res: Response) => {
         userId: usersTable.id,
         author: usersTable.name,
         username: usersTable.username,
+        authorImg: usersTable.image
     })
         .from(postsTable)
         .innerJoin(usersTable, eq(postsTable.authorId, usersTable.id))
