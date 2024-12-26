@@ -43,7 +43,7 @@ router.put('/:user/post/:post', auth, async (req: Request, res: Response) => {
         return;
     }
 
-    const count = req.body.content.split(/\s+/).filter(Boolean).length / 300;
+    const count = Math.ceil(req.body.content.split(/\s+/).filter(Boolean).length / 300);
 
     const updatedPost = await db.update(postsTable)
         .set({
