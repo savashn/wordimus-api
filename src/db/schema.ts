@@ -45,7 +45,8 @@ export const messagesTable = pgTable("messages", {
     sentAt: timestamp('sent_at').defaultNow().notNull(),
     isSeen: boolean().default(false).notNull(),
     sender: integer('sender').notNull().references(() => usersTable.id),
-    receiver: integer('receiver').notNull().references(() => usersTable.id)
+    receiver: integer('receiver').notNull().references(() => usersTable.id),
+    readingTime: integer().notNull()
 });
 
 export const postCategoriesTable = pgTable("post_categories", {

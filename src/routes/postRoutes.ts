@@ -107,6 +107,8 @@ router.post('/new/message', auth, async (req: Request, res: Response) => {
         return;
     }
 
+    const count = Math.ceil(req.body.message.split(/\s+/).filter(Boolean).length / 300);
+
     const receiver = await db.select({
         id: usersTable.id
     })
@@ -124,7 +126,8 @@ router.post('/new/message', auth, async (req: Request, res: Response) => {
     const newMessage: typeof messagesTable.$inferInsert = {
         message: req.body.message,
         sender: req.user.id,
-        receiver: receiverId
+        receiver: receiverId,
+        readingTime: count < 1 ? 1 : count,
     }
 
     await db.insert(messagesTable).values(newMessage);
