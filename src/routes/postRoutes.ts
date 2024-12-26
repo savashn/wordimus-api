@@ -107,10 +107,24 @@ router.post('/new/message', auth, async (req: Request, res: Response) => {
         return;
     }
 
+    const receiver = await db.select({
+        id: usersTable.id
+    })
+        .from(usersTable)
+        .where(eq(usersTable.username, req.body.slug))
+        .limit(1)
+
+    if (receiver.length === 0) {
+        res.status(404).json({ message: 'Not allowed.' });
+        return;
+    }
+
+    const receiverId = receiver[0].id
+
     const newMessage: typeof messagesTable.$inferInsert = {
         message: req.body.message,
         sender: req.user.id,
-        receiver: req.body.receiverId
+        receiver: receiverId
     }
 
     await db.insert(messagesTable).values(newMessage);
