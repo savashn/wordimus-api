@@ -186,6 +186,7 @@ router.get('/messages', auth, async (req: Request, res: Response) => {
             receiverImg: receiverUser.image,
             receiverId: receiverUser.id,
             isSeen: messagesTable.isSeen,
+            readingTime: messagesTable.readingTime
         })
         .from(messagesTable)
         .innerJoin(senderUser, eq(messagesTable.sender, senderUser.id))
