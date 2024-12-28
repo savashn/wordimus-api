@@ -2,7 +2,7 @@ import { Request, Response, Router } from "express";
 import { sql } from '@vercel/postgres';
 import { eq, and, desc, or } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
-import { categoriesTable, messagesTable, postsTable, usersTable } from '../db/schema';
+import { categoriesTable, messagesTable, postCategoriesTable, postsTable, usersTable } from '../db/schema';
 import { Message } from "../types/interfaces";
 import auth from "../middlewares/auth";
 import { alias } from "drizzle-orm/pg-core";
@@ -34,9 +34,18 @@ router.get('/edit/post/:post', auth, async (req: Request, res: Response) => {
             eq(categoriesTable.userId, req.user.id)
         )
 
+    const postCategories = await db.select()
+        .from(postCategoriesTable)
+        .where(
+            eq(postCategoriesTable.postId, post[0].id)
+        );
+
+    const categoryIds = postCategories.map((pc) => pc.categoryId);
+
     const response = {
         post: post[0],
-        categories
+        categories,
+        categoryIds
     }
 
     res.send(response);
