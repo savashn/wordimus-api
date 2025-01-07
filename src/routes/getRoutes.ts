@@ -159,7 +159,7 @@ router.get('/:user/starreds', async (req: Request, res: Response) => {
     res.send(starredPosts);
 });
 
-router.get('/:user/categories', async (req: Request, res: Response) => {
+router.get('/:user/categories', admin, async (req: Request, res: Response) => {
     const db = drizzle({ client: sql });
 
     const user = await db.select({
@@ -170,6 +170,13 @@ router.get('/:user/categories', async (req: Request, res: Response) => {
 
     const userId = user[0].id;
 
+    const condition = req.user && req.user.id
+        ? eq(postsTable.authorId, userId)
+        : and(
+            eq(postsTable.authorId, userId),
+            eq(categoriesTable.isHidden, false)
+        );
+
     const categories = await db.select({
         id: categoriesTable.id as typeof categoriesTable.id,
         category: categoriesTable.category as typeof categoriesTable.category,
@@ -179,9 +186,7 @@ router.get('/:user/categories', async (req: Request, res: Response) => {
         .from(categoriesTable)
         .innerJoin(postCategoriesTable, eq(postCategoriesTable.categoryId, categoriesTable.id))
         .innerJoin(postsTable, eq(postCategoriesTable.postId, postsTable.id))
-        .where(
-            eq(postsTable.authorId, userId)
-        )
+        .where(condition)
         .groupBy(categoriesTable.id)
 
     if (categories.length === 0) {
