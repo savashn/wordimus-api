@@ -1,3 +1,8 @@
+export interface DecodedToken {
+    id: number;
+    username: string;
+}
+
 export interface User {
     id?: number;
     name: string;
