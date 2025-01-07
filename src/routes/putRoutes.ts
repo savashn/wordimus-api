@@ -11,6 +11,16 @@ import { User } from "../types/interfaces";
 
 const router = Router();
 
+function generateRandomPath(length = 8) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        result += characters[randomIndex];
+    }
+    return result;
+}
+
 router.put('/:user/category/:category', auth, async (req: Request, res: Response) => {
     const db = drizzle({ client: sql });
 
@@ -19,7 +29,7 @@ router.put('/:user/category/:category', auth, async (req: Request, res: Response
         return;
     }
 
-    const updatedPost = await db.update(categoriesTable)
+    const updatedCategory = await db.update(categoriesTable)
         .set({
             category: req.body.category,
             slug: slugify(req.body.category.toLowerCase()),
@@ -31,6 +41,27 @@ router.put('/:user/category/:category', auth, async (req: Request, res: Response
                 eq(categoriesTable.userId, req.user.id)
             )
         )
+        .returning({ updatedId: categoriesTable.id })
+
+    if (updatedCategory.length > 0) {
+        const categoryId = updatedCategory[0].updatedId;
+
+        const posts = await db.select()
+            .from(postCategoriesTable)
+            .where(
+                eq(postCategoriesTable.categoryId, categoryId),
+            );
+
+        for (const post of posts) {
+            await db.update(postsTable)
+                .set({
+                    isHidden: req.body.isHidden
+                })
+                .where(
+                    eq(postsTable.id, post.postId)
+                );
+        }
+    }
 
     res.send('Category has been updated!');
 })
@@ -45,14 +76,17 @@ router.put('/:user/post/:post', auth, async (req: Request, res: Response) => {
 
     const count = Math.ceil(req.body.content.split(/\s+/).filter(Boolean).length / 300);
 
+    const randomPath = generateRandomPath(12);
+
     const updatedPost = await db.update(postsTable)
         .set({
             header: req.body.header,
-            slug: slugify(req.body.header.toLowerCase()),
+            slug: req.body.isPrivate ? randomPath : slugify(req.body.header.toLowerCase()),
             content: req.body.content,
             readingTime: count < 1 ? 1 : count,
             updatedAt: new Date(),
-            isHidden: req.body.isHidden
+            isHidden: req.body.isHidden,
+            isPrivate: req.body.isPrivate
         })
         .where(
             and(

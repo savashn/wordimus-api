@@ -3,7 +3,7 @@ import { sql } from '@vercel/postgres';
 import { eq, and, ilike, desc, count, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/vercel-postgres';
 import { categoriesTable, followsTable, postCategoriesTable, postsTable, starsTable, usersTable } from '../db/schema';
-import { Post, PostsByCategory, Starred, User } from "../types/interfaces";
+import { Post, Starred, User } from "../types/interfaces";
 import admin from "../middlewares/admin";
 
 const router = Router();
@@ -48,7 +48,8 @@ router.get('/:user/posts', admin, async (req: Request, res: Response) => {
         ? eq(usersTable.id, req.user.id)
         : and(
             eq(usersTable.username, req.params.user),
-            eq(postsTable.isHidden, false)
+            eq(postsTable.isHidden, false),
+            eq(postsTable.isPrivate, false)
         );
 
     const posts: Post[] = await db.select({
@@ -170,12 +171,17 @@ router.get('/:user/categories', admin, async (req: Request, res: Response) => {
 
     const userId = user[0].id;
 
-    const condition = req.user && req.user.id
-        ? eq(postsTable.authorId, userId)
-        : and(
-            eq(postsTable.authorId, userId),
-            eq(categoriesTable.isHidden, false)
-        );
+    let condition;
+
+    if (req.user && req.user.id == userId) {
+        condition = eq(postsTable.authorId, userId)
+    } else {
+        condition =
+            and(
+                eq(postsTable.authorId, userId),
+                eq(categoriesTable.isHidden, false)
+            )
+    }
 
     const categories = await db.select({
         id: categoriesTable.id as typeof categoriesTable.id,
@@ -197,7 +203,7 @@ router.get('/:user/categories', admin, async (req: Request, res: Response) => {
     res.send(categories);
 });
 
-router.get('/:user/categories/category', async (req: Request, res: Response) => {
+router.get('/:user/categories/category', admin, async (req: Request, res: Response) => {
     const categoryIds = Array.isArray(req.query.id) ? req.query.id.map(Number) : [Number(req.query.id)];
 
     if (categoryIds.some(isNaN)) {
@@ -217,6 +223,46 @@ router.get('/:user/categories/category', async (req: Request, res: Response) => 
         .filter(row => row.categoryCount === categoryIds.length)
         .map(row => row.postId);
 
+    let condition;
+
+    if (req.user) {
+        const admin = await db.select()
+            .from(usersTable)
+            .where(
+                and(
+                    eq(usersTable.id, req.user.id),
+                    eq(usersTable.username, req.params.user)
+                )
+            )
+
+        if (admin.length > 0) {
+            condition =
+                and(
+                    eq(usersTable.username, req.params.user),
+                    inArray(postsTable.id, filteredPostIds)
+                )
+
+            console.log(admin)
+        } else {
+            condition =
+                and(
+                    eq(usersTable.username, req.params.user),
+                    inArray(postsTable.id, filteredPostIds),
+                    eq(postsTable.isHidden, false),
+                    eq(postsTable.isPrivate, false)
+                )
+        }
+
+    } else {
+        condition =
+            and(
+                eq(usersTable.username, req.params.user),
+                inArray(postsTable.id, filteredPostIds),
+                eq(postsTable.isHidden, false),
+                eq(postsTable.isPrivate, false)
+            )
+    }
+
     const categories = await db
         .select({
             slug: postsTable.slug,
@@ -226,15 +272,8 @@ router.get('/:user/categories/category', async (req: Request, res: Response) => 
         })
         .from(postsTable)
         .innerJoin(usersTable, eq(postsTable.authorId, usersTable.id))
-        .where(
-            and(
-                eq(usersTable.username, req.params.user),
-                inArray(postsTable.id, filteredPostIds)
-            )
-        )
+        .where(condition)
         .orderBy(desc(postsTable.createdAt));
-
-    console.log(categories)
 
     if (categories.length === 0) {
         res.status(404).json({ message: 'There is nothing yet.' });
@@ -271,13 +310,15 @@ router.get('/:user', async (req: Request, res: Response) => {
         content: postsTable.content,
         readingTime: postsTable.readingTime,
         createdAt: postsTable.createdAt,
-        isHidden: postsTable.isHidden
+        isHidden: postsTable.isHidden,
+        isPrivate: postsTable.isPrivate
     })
         .from(postsTable)
         .where(
             and(
                 eq(postsTable.authorId, userId as number),
-                eq(postsTable.isHidden, false)
+                eq(postsTable.isHidden, false),
+                eq(postsTable.isPrivate, false)
             ))
         .orderBy(desc(postsTable.createdAt))
         .limit(3);
@@ -304,7 +345,12 @@ router.get('/', async (req: Request, res: Response) => {
     })
         .from(postsTable)
         .innerJoin(usersTable, eq(postsTable.authorId, usersTable.id))
-        .where(eq(postsTable.isHidden, false))
+        .where(
+            and(
+                eq(postsTable.isHidden, false),
+                eq(postsTable.isPrivate, false)
+            )
+        )
         .orderBy(desc(postsTable.id))
         .limit(5);
 

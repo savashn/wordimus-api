@@ -25,7 +25,8 @@ export const postsTable = pgTable("posts", {
     authorId: integer('author_id').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
-    isHidden: boolean('is_hidden').default(false).notNull()
+    isHidden: boolean('is_hidden').default(false).notNull(),
+    isPrivate: boolean('is_private').default(false).notNull()
 });
 
 export const usersTable = pgTable("users", {
