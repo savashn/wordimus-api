@@ -51,8 +51,8 @@ export const messagesTable = pgTable("messages", {
 });
 
 export const postCategoriesTable = pgTable("post_categories", {
-    postId: integer('post_id').notNull().references(() => postsTable.id),
-    categoryId: integer('category_id').notNull().references(() => categoriesTable.id)
+    postId: integer('post_id').notNull().references(() => postsTable.id, { onDelete: 'cascade' }),
+    categoryId: integer('category_id').notNull().references(() => categoriesTable.id, { onDelete: 'cascade' })
 },
     (t) => ({
         pk: primaryKey({ columns: [t.postId, t.categoryId] })

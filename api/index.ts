@@ -14,7 +14,7 @@ app.use(helmet());
 
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
-    methods: ['GET', 'POST', 'PUT'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
 
@@ -28,11 +28,13 @@ import adminRoutes from '../src/routes/adminRoutes';
 import getRoutes from '../src/routes/getRoutes';
 import postRoutes from '../src/routes/postRoutes';
 import putRoutes from '../src/routes/putRoutes';
+import deleteRoutes from '../src/routes/deleteRoutes';
 
 app.use('/admin', adminRoutes);
 app.use('/user', getRoutes);
 app.use(postRoutes);
 app.use('/edit', putRoutes);
+app.use('/delete', deleteRoutes);
 
 app.use(errorHandler);
 

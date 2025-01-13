@@ -242,7 +242,6 @@ router.get('/:user/categories/category', admin, async (req: Request, res: Respon
                     inArray(postsTable.id, filteredPostIds)
                 )
 
-            console.log(admin)
         } else {
             condition =
                 and(
