@@ -29,11 +29,14 @@ router.put('/:user/category/:category', auth, async (req: Request, res: Response
         return;
     }
 
+    const categoryPath = generateRandomPath(12);
+
     const updatedCategory = await db.update(categoriesTable)
         .set({
             category: req.body.category,
-            slug: slugify(req.body.category.toLowerCase()),
-            isHidden: req.body.isHidden
+            slug: req.body.isPrivate ? categoryPath : slugify(req.body.category.toLowerCase()),
+            isHidden: req.body.isHidden,
+            isPrivate: req.body.isPrivate
         })
         .where(
             and(
@@ -53,18 +56,28 @@ router.put('/:user/category/:category', auth, async (req: Request, res: Response
             );
 
         for (const post of posts) {
-            await db.update(postsTable)
-                .set({
-                    isHidden: req.body.isHidden
-                })
-                .where(
-                    eq(postsTable.id, post.postId)
-                );
+            const existingPost = await db.select({ header: postsTable.header })
+                .from(postsTable)
+                .where(eq(postsTable.id, post.postId))
+
+            for (const p of existingPost) {
+                const postPath = generateRandomPath(12);
+                await db.update(postsTable)
+                    .set({
+                        isHidden: req.body.isHidden,
+                        isPrivate: req.body.isPrivate ? true : false,
+                        slug: req.body.isPrivate ? postPath : slugify(p.header)
+                    })
+                    .where(
+                        eq(postsTable.id, post.postId)
+                    );
+            }
         }
+
     }
 
     res.send('Category has been updated!');
-})
+});
 
 router.put('/:user/post/:post', auth, async (req: Request, res: Response) => {
     const db = drizzle({ client: sql });
@@ -75,13 +88,12 @@ router.put('/:user/post/:post', auth, async (req: Request, res: Response) => {
     }
 
     const count = Math.ceil(req.body.content.split(/\s+/).filter(Boolean).length / 300);
-
     const randomPath = generateRandomPath(12);
 
     const updatedPost = await db.update(postsTable)
         .set({
             header: req.body.header,
-            slug: req.body.isPrivate ? randomPath : slugify(req.body.header.toLowerCase()),
+            slug: req.body.isPrivate ? randomPath : slugify(req.body.header.toLowerCase()), // burayı kategori için de yap
             content: req.body.content,
             readingTime: count < 1 ? 1 : count,
             updatedAt: new Date(),

@@ -13,7 +13,8 @@ export const categoriesTable = pgTable("categories", {
     category: varchar({ length: 255 }).notNull(),
     slug: varchar({ length: 255 }).notNull(),
     userId: integer('user_id').notNull(),
-    isHidden: boolean('is_hidden').default(false).notNull()
+    isHidden: boolean('is_hidden').default(false).notNull(),
+    isPrivate: boolean('is_private').default(false).notNull()
 });
 
 export const postsTable = pgTable("posts", {
