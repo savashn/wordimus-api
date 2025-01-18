@@ -8,18 +8,9 @@ import auth from "../middlewares/auth";
 import slugify from "slugify";
 import upload, { deleteFromCloudinary } from "../middlewares/upload";
 import { User } from "../types/interfaces";
+import generateRandomPath from "../middlewares/randomPath";
 
 const router = Router();
-
-function generateRandomPath(length = 8) {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < length; i++) {
-        const randomIndex = Math.floor(Math.random() * characters.length);
-        result += characters[randomIndex];
-    }
-    return result;
-}
 
 router.put('/:user/category/:category', auth, async (req: Request, res: Response) => {
     const db = drizzle({ client: sql });
@@ -29,13 +20,12 @@ router.put('/:user/category/:category', auth, async (req: Request, res: Response
         return;
     }
 
-    const categoryPath = generateRandomPath(12);
+    const categoryPath = generateRandomPath(16);
 
     const updatedCategory = await db.update(categoriesTable)
         .set({
             category: req.body.category,
             slug: req.body.isPrivate ? categoryPath : slugify(req.body.category.toLowerCase()),
-            isHidden: req.body.isHidden,
             isPrivate: req.body.isPrivate
         })
         .where(
@@ -46,35 +36,35 @@ router.put('/:user/category/:category', auth, async (req: Request, res: Response
         )
         .returning({ updatedId: categoriesTable.id })
 
-    if (updatedCategory.length > 0) {
-        const categoryId = updatedCategory[0].updatedId;
+    // if (updatedCategory.length > 0) {
+    //     const categoryId = updatedCategory[0].updatedId;
 
-        const posts = await db.select()
-            .from(postCategoriesTable)
-            .where(
-                eq(postCategoriesTable.categoryId, categoryId),
-            );
+    //     const posts = await db.select()
+    //         .from(postCategoriesTable)
+    //         .where(
+    //             eq(postCategoriesTable.categoryId, categoryId),
+    //         );
 
-        for (const post of posts) {
-            const existingPost = await db.select({ header: postsTable.header })
-                .from(postsTable)
-                .where(eq(postsTable.id, post.postId))
+    //     for (const post of posts) {
+    //         const existingPost = await db.select({ header: postsTable.header })
+    //             .from(postsTable)
+    //             .where(eq(postsTable.id, post.postId))
 
-            for (const p of existingPost) {
-                const postPath = generateRandomPath(12);
-                await db.update(postsTable)
-                    .set({
-                        isHidden: req.body.isHidden,
-                        isPrivate: req.body.isPrivate ? true : false,
-                        slug: req.body.isPrivate ? postPath : slugify(p.header)
-                    })
-                    .where(
-                        eq(postsTable.id, post.postId)
-                    );
-            }
-        }
+    //         for (const p of existingPost) {
+    //             const postPath = generateRandomPath(16);
+    //             await db.update(postsTable)
+    //                 .set({
+    //                     isHidden: req.body.isHidden,
+    //                     isPrivate: req.body.isPrivate ? true : false,
+    //                     slug: req.body.isPrivate ? postPath : slugify(p.header)
+    //                 })
+    //                 .where(
+    //                     eq(postsTable.id, post.postId)
+    //                 );
+    //         }
+    //     }
 
-    }
+    // }
 
     res.send('Category has been updated!');
 });
@@ -88,12 +78,12 @@ router.put('/:user/post/:post', auth, async (req: Request, res: Response) => {
     }
 
     const count = Math.ceil(req.body.content.split(/\s+/).filter(Boolean).length / 300);
-    const randomPath = generateRandomPath(12);
+    const randomPath = generateRandomPath(16);
 
     const updatedPost = await db.update(postsTable)
         .set({
             header: req.body.header,
-            slug: req.body.isPrivate ? randomPath : slugify(req.body.header.toLowerCase()), // burayı kategori için de yap
+            slug: req.body.isPrivate ? randomPath : slugify(req.body.header.toLowerCase()),
             content: req.body.content,
             readingTime: count < 1 ? 1 : count,
             updatedAt: new Date(),

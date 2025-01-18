@@ -75,7 +75,7 @@ router.get('/:user/posts', admin, async (req: Request, res: Response) => {
     res.send(posts);
 });
 
-router.get('/:user/posts/:post', async (req: Request, res: Response) => {
+router.get('/:user/posts/:post', admin, async (req: Request, res: Response) => {
     const db = drizzle({ client: sql });
 
     const posts: Post[] = await db.select({
@@ -179,7 +179,7 @@ router.get('/:user/categories', admin, async (req: Request, res: Response) => {
         condition =
             and(
                 eq(postsTable.authorId, userId),
-                eq(categoriesTable.isHidden, false)
+                eq(categoriesTable.isPrivate, false)
             )
     }
 
@@ -213,10 +213,14 @@ router.get('/:user/categories/category', admin, async (req: Request, res: Respon
 
     const db = drizzle({ client: sql });
 
-    const matchingPostIds = await db
-        .select({ postId: postCategoriesTable.postId, categoryCount: count() })
+    const matchingPostIds = await db.select({
+        postId: postCategoriesTable.postId,
+        categoryCount: count()
+    })
         .from(postCategoriesTable)
-        .where(inArray(postCategoriesTable.categoryId, categoryIds))
+        .where(
+            inArray(postCategoriesTable.categoryId, categoryIds)
+        )
         .groupBy(postCategoriesTable.postId);
 
     const filteredPostIds = matchingPostIds
@@ -281,6 +285,49 @@ router.get('/:user/categories/category', admin, async (req: Request, res: Respon
 
     res.send(categories);
 });
+
+router.get('/:user/categories/private/:slug', async (req: Request, res: Response) => {
+    const db = drizzle({ client: sql });
+
+    const categories = await db.select({
+        postId: postCategoriesTable.postId
+    })
+        .from(categoriesTable)
+        .innerJoin(postCategoriesTable, eq(categoriesTable.id, postCategoriesTable.categoryId))
+        .where(eq(categoriesTable.slug, req.params.slug))
+
+    const categoryPostIds = categories.map(category => category.postId);
+
+    const posts = await db.select({
+        slug: postsTable.slug,
+        header: postsTable.header,
+        readingTime: postsTable.readingTime,
+        createdAt: postsTable.createdAt,
+    })
+        .from(postsTable)
+        .innerJoin(usersTable, eq(postsTable.authorId, usersTable.id))
+        .innerJoin(postCategoriesTable, eq(postCategoriesTable.postId, postsTable.id))
+        .where(
+            and(
+                inArray(postCategoriesTable.postId, categoryPostIds),
+                eq(postsTable.isHidden, false)
+            )
+        )
+        .groupBy(
+            postsTable.slug,
+            postsTable.header,
+            postsTable.readingTime,
+            postsTable.createdAt
+        )
+        .orderBy(desc(postsTable.createdAt));
+
+    if (posts.length === 0) {
+        res.status(404).json({ message: 'There is nothing yet.' });
+        return;
+    }
+
+    res.send(posts);
+})
 
 router.get('/:user', async (req: Request, res: Response) => {
     const db = drizzle({ client: sql });

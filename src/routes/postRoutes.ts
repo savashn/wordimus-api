@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from 'bcrypt';
 import auth from "../middlewares/auth";
 import slugify from "slugify";
+import generateRandomPath from "../middlewares/randomPath";
 
 const router = Router();
 
@@ -26,7 +27,7 @@ router.post('/follow', auth, async (req: Request, res: Response) => {
     await db.insert(followsTable).values(follow);
 
     res.json('Success!');
-})
+});
 
 router.post('/mark-as-starred', auth, async (req: Request, res: Response) => {
     const db = drizzle({ client: sql });
@@ -44,7 +45,7 @@ router.post('/mark-as-starred', auth, async (req: Request, res: Response) => {
     await db.insert(starsTable).values(star);
 
     res.send('Success!')
-})
+});
 
 router.post('/new/post', auth, async (req: Request, res: Response) => {
     const db = drizzle({ client: sql });
@@ -55,11 +56,14 @@ router.post('/new/post', auth, async (req: Request, res: Response) => {
     }
 
     const count = Math.ceil(req.body.content.split(/\s+/).filter(Boolean).length / 300);
+    const randomPath = generateRandomPath(16);
 
     const post: typeof postsTable.$inferInsert = {
         header: req.body.header,
-        slug: slugify(req.body.header.toLowerCase()),
+        slug: req.body.isPrivate ? randomPath : slugify(req.body.header.toLowerCase()),
         content: req.body.content,
+        isHidden: req.body.isHidden,
+        isPrivate: req.body.isPrivate,
         readingTime: count < 1 ? 1 : count,
         authorId: req.user.id
     }
@@ -67,17 +71,20 @@ router.post('/new/post', auth, async (req: Request, res: Response) => {
     const newPost = await db.insert(postsTable).values(post).returning();
 
     if (Array.isArray(req.body.categories) && req.body.categories.length > 0) {
+
         for (const categoryId of req.body.categories) {
+
             const category: typeof postCategoriesTable.$inferInsert = {
                 postId: newPost[0].id,
                 categoryId: categoryId
             };
             await db.insert(postCategoriesTable).values(category);
+
         }
+
     }
 
     res.status(201).send('Post successfully created');
-
 });
 
 router.post('/new/category', auth, async (req: Request, res: Response) => {
@@ -88,9 +95,12 @@ router.post('/new/category', auth, async (req: Request, res: Response) => {
         return;
     }
 
+    const categoryPath = generateRandomPath(16);
+
     const category: typeof categoriesTable.$inferInsert = {
         category: req.body.category,
-        slug: slugify(req.body.category.toLowerCase()),
+        slug: req.body.isPrivate ? categoryPath : slugify(req.body.category.toLowerCase()),
+        isPrivate: req.body.isPrivate,
         userId: req.user.id
     }
 
