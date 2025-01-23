@@ -398,7 +398,7 @@ router.get('/', async (req: Request, res: Response) => {
             )
         )
         .orderBy(desc(postsTable.id))
-        .limit(5);
+        .limit(1);
 
     res.send(posts);
 });
